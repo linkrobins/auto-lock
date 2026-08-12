@@ -46,9 +46,16 @@ Admin, then Extensions, then Link Robins Auto Lock.
 | Days of silence before locking | 30 | Counted from the most recent post. Minimum 1. |
 | Tags that are never locked | none | Discussions with any of these tags stay open however quiet they get. |
 | Show a countdown above the reply box | on | Turn off to lock silently. |
+| Leave a note in the discussion when it locks | on | Adds one line to the post stream saying the discussion was locked automatically, and after how long. |
 
 It ships switched off. Enabling an extension should not silently start locking a
 forum's back catalogue, so it waits to be asked.
+
+The note left in a locked discussion records the threshold that was in force at
+the time, so changing 30 days to 90 later does not rewrite the stated reason on
+discussions already locked under the old rule. The note is an event post, the
+same kind of row as a rename or a tag change, so it does not bump the discussion
+back to the top of the list and does not notify anyone.
 
 ## Requirements
 

@@ -16,6 +16,7 @@ final class Settings
     public const DAYS = self::PREFIX.'days';
     public const EXEMPT_TAGS = self::PREFIX.'exempt_tags';
     public const SHOW_COUNTDOWN = self::PREFIX.'show_countdown';
+    public const POST_NOTICE = self::PREFIX.'post_notice';
 
     public const DEFAULT_DAYS = 30;
 
@@ -53,6 +54,18 @@ final class Settings
     public function showCountdown(): bool
     {
         return (bool) $this->settings->get(self::SHOW_COUNTDOWN, true);
+    }
+
+    /**
+     * Leave a line in the discussion saying it was locked, and why.
+     *
+     * Default on: a thread that closes with no explanation reads as
+     * moderation, and members ask about it. One row per locked discussion is
+     * the cost, which a first sweep over an old forum does pay in bulk.
+     */
+    public function postNotice(): bool
+    {
+        return (bool) $this->settings->get(self::POST_NOTICE, true);
     }
 
     /**

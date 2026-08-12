@@ -113,6 +113,13 @@ app.initializers.add('linkrobins/auto-lock', () => {
     help: trans('show_countdown_help'),
   });
 
+  registry.registerSetting({
+    setting: PREFIX + 'post_notice',
+    type: 'boolean',
+    label: trans('post_notice_label'),
+    help: trans('post_notice_help'),
+  });
+
   // A function entry is invoked with `this` = the settings page, whose
   // setting() streams feed the page's own Save button. That is how the tag
   // picker participates in saving without managing its own state.

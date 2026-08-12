@@ -8,6 +8,10 @@ linkrobins-auto-lock:
       today: "This discussion locks today if nobody replies."
       title: "Quiet discussions are locked automatically after {days} days."
 
+    # The line left in the discussion when it locks. No angle brackets.
+    post:
+      locked: "Locked automatically after {count} days without a reply."
+
   admin:
     settings:
       title: "Auto Lock"
@@ -25,6 +29,9 @@ linkrobins-auto-lock:
 
       show_countdown_label: "Show a countdown above the reply box"
       show_countdown_help: "Tells members a discussion is about to lock while they can still reply to it."
+
+      post_notice_label: "Leave a note in the discussion when it locks"
+      post_notice_help: "Adds one line to the discussion saying it was locked automatically, and after how long. Without it a thread just closes with no explanation."
 
       # No angle brackets in values: Flarum parses them as rich-text tags and an
       # unknown one throws, which renders the raw key and can blank this page.

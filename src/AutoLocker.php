@@ -200,6 +200,25 @@ final class AutoLocker
                 $this->log->error(
                     '[linkrobins/auto-lock] could not lock discussion '.$discussion->id.': '.$e->getMessage()
                 );
+
+                continue;
+            }
+
+            // Best effort, and deliberately after the lock rather than with it.
+            // The lock is the thing members experience; the note explaining it
+            // is decoration, so a failure to write the note must not undo or
+            // stop the sweep. Event posts are excluded from Discussion::comments(),
+            // which is what refreshLastPost() reads, so this cannot bump a
+            // decade-old thread to the top of the discussion list.
+            if ($this->settings->postNotice()) {
+                try {
+                    AutoLockedPost::reply((int) $discussion->id, $this->settings->days())->save();
+                } catch (\Throwable $e) {
+                    $this->log->error(
+                        '[linkrobins/auto-lock] locked discussion '.$discussion->id.
+                        ' but could not add the explanation post: '.$e->getMessage()
+                    );
+                }
             }
         }
 

@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
 import { override } from 'flarum/common/extend';
+import AutoLockedPost from './AutoLockedPost';
 
 // The global Flarum exposes, not an import: flarum-webpack-config does not
 // externalize mithril, so importing it would bundle a second copy.
@@ -28,6 +29,11 @@ function countdownText(lockAt) {
 }
 
 app.initializers.add('linkrobins/auto-lock', () => {
+  // What Extend.PostTypes().add() does under the hood. Registered directly so
+  // the stream can render the post type even on an install whose extenders
+  // array is not read.
+  app.postComponents['linkrobinsAutoLocked'] = AutoLockedPost;
+
   // override, NOT extend. extend() hands the callback the return value and
   // discards whatever the callback returns, so it can only mutate in place;
   // returning a new vnode from it is silently ignored and nothing renders.
