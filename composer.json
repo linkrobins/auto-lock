@@ -1,0 +1,74 @@
+{
+    "name": "linkrobins/auto-lock",
+    "description": "Locks discussions that have gone quiet for a configurable number of days, with tags you can exempt. Runs on Flarum's scheduler.",
+    "type": "flarum-extension",
+    "keywords": [
+        "flarum",
+        "moderation",
+        "lock",
+        "necropost",
+        "scheduler"
+    ],
+    "homepage": "https://linkrobins.com/extensions/auto-lock",
+    "license": "MIT",
+    "support": {
+        "issues": "https://github.com/linkrobins/auto-lock/issues",
+        "source": "https://github.com/linkrobins/auto-lock"
+    },
+    "authors": [
+        {
+            "name": "Karl Bullock",
+            "email": "karl@linkrobins.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "flarum/core": "^2.0"
+    },
+    "require-dev": {
+        "flarum/testing": "^2.0",
+        "flarum/phpstan": "^2.0"
+    },
+    "minimum-stability": "beta",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "LinkRobins\\AutoLock\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "LinkRobins\\AutoLock\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "analyse:phpstan": "phpstan analyse",
+        "clear-cache:phpstan": "phpstan clear-result-cache",
+        "test": "@test:integration",
+        "test:integration": "phpunit -c tests/phpunit.integration.xml",
+        "test:setup": "@php tests/integration/setup.php"
+    },
+    "scripts-descriptions": {
+        "analyse:phpstan": "Run static analysis.",
+        "test": "Runs all tests.",
+        "test:integration": "Runs all integration tests.",
+        "test:setup": "Sets up a database for use with integration tests. Execute this only once."
+    },
+    "extra": {
+        "flarum-extension": {
+            "title": "Link Robins Auto Lock",
+            "category": "moderation",
+            "icon": {
+                "name": "fas fa-hourglass-end",
+                "color": "#07adcc",
+                "backgroundColor": "#1a2535"
+            }
+        },
+        "flarum-cli": {
+            "modules": {
+                "githubActions": true,
+                "backendTesting": true
+            }
+        }
+    }
+}
