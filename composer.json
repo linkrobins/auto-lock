@@ -26,8 +26,10 @@
         "flarum/core": "^2.0"
     },
     "require-dev": {
-        "flarum/testing": "^2.0",
-        "flarum/phpstan": "^2.0"
+        "flarum/lock": "*",
+        "flarum/phpstan": "^2.0",
+        "flarum/tags": "*",
+        "flarum/testing": "^2.0"
     },
     "suggest": {
         "flarum/lock": "Required for this extension to do anything: it owns the is_locked column that auto-locking writes to.",
