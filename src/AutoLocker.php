@@ -5,6 +5,7 @@ namespace LinkRobins\AutoLock;
 use Carbon\Carbon;
 use Flarum\Discussion\Discussion;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\LazyCollection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,6 +18,11 @@ use Psr\Log\LoggerInterface;
  */
 final class AutoLocker
 {
+    /** How many discussions to hold in memory at once while sweeping. */
+    private const BATCH = 500;
+
+    private ?bool $available = null;
+
     public function __construct(
         protected Settings $settings,
         protected DiscussionTags $tags,
@@ -33,19 +39,21 @@ final class AutoLocker
      */
     public function available(): bool
     {
-        static $available = null;
-
-        if ($available === null) {
+        // Memoized on the instance, NOT in a method static. Under a persistent
+        // runtime (FrankenPHP, Swoole, Octane) a static outlives the request and
+        // would pin the answer for the life of the worker, so enabling or
+        // disabling flarum/lock would appear to do nothing until a restart.
+        if ($this->available === null) {
             try {
-                $available = (new Discussion())->getConnection()
+                $this->available = (new Discussion())->getConnection()
                     ->getSchemaBuilder()
                     ->hasColumn('discussions', 'is_locked');
             } catch (\Throwable $e) {
-                $available = false;
+                $this->available = false;
             }
         }
 
-        return $available;
+        return $this->available;
     }
 
     /** The cutoff: anything last posted to before this is stale. */
@@ -106,26 +114,57 @@ final class AutoLocker
      * when flarum/tags is not installed, which is the same reason
      * DiscussionTags reads the pivot table directly.
      *
-     * @return \Illuminate\Support\LazyCollection<int, Discussion>
+     * @return LazyCollection<int, Discussion>
      */
-    public function due(?Carbon $now = null): \Illuminate\Support\LazyCollection
+    public function due(?Carbon $now = null): LazyCollection
     {
+        // Guard here as well as in run(). This is public, and `is_locked` is
+        // flarum/lock's column: querying it on a forum without that extension
+        // is a SQL error, not an empty result.
+        if (! $this->available()) {
+            return LazyCollection::empty();
+        }
+
         $cutoff = $this->cutoff($now);
 
-        return Discussion::query()
-            ->where('is_locked', false)
-            ->whereNull('hidden_at')
-            ->where(function (Builder $query) use ($cutoff) {
-                $query->where('last_posted_at', '<', $cutoff)
-                    ->orWhere(function (Builder $q) use ($cutoff) {
-                        // A discussion with no replies has no last_posted_at on
-                        // some installs, so fall back to when it was started.
-                        $q->whereNull('last_posted_at')->where('created_at', '<', $cutoff);
-                    });
-            })
-            ->orderBy('id')
-            ->cursor()
-            ->reject(fn (Discussion $discussion) => $this->isExempt($discussion));
+        // Paged by ascending id rather than cursor(). Two reasons: cursor() holds
+        // the whole result set in memory on MySQL (PDO buffers by default), which
+        // a first run over an old forum can make very large; and the caller writes
+        // to `is_locked`, the very column this query filters on, while iterating.
+        // Keying each page on `id > lastId` means a locked row can never be
+        // revisited or cause a later page to skip.
+        return LazyCollection::make(function () use ($cutoff) {
+            $lastId = 0;
+
+            while (true) {
+                $batch = Discussion::query()
+                    ->where('is_locked', false)
+                    ->whereNull('hidden_at')
+                    ->where('id', '>', $lastId)
+                    ->where(function (Builder $query) use ($cutoff) {
+                        $query->where('last_posted_at', '<', $cutoff)
+                            ->orWhere(function (Builder $q) use ($cutoff) {
+                                // A discussion with no replies has no
+                                // last_posted_at on some installs, so fall back
+                                // to when it was started.
+                                $q->whereNull('last_posted_at')->where('created_at', '<', $cutoff);
+                            });
+                    })
+                    ->orderBy('id')
+                    ->limit(self::BATCH)
+                    ->get();
+
+                if ($batch->isEmpty()) {
+                    return;
+                }
+
+                foreach ($batch as $discussion) {
+                    $lastId = (int) $discussion->id;
+
+                    yield $discussion;
+                }
+            }
+        })->reject(fn (Discussion $discussion) => $this->isExempt($discussion));
     }
 
     /**
@@ -161,6 +200,25 @@ final class AutoLocker
                 $this->log->error(
                     '[linkrobins/auto-lock] could not lock discussion '.$discussion->id.': '.$e->getMessage()
                 );
+
+                continue;
+            }
+
+            // Best effort, and deliberately after the lock rather than with it.
+            // The lock is the thing members experience; the note explaining it
+            // is decoration, so a failure to write the note must not undo or
+            // stop the sweep. Event posts are excluded from Discussion::comments(),
+            // which is what refreshLastPost() reads, so this cannot bump a
+            // decade-old thread to the top of the discussion list.
+            if ($this->settings->postNotice()) {
+                try {
+                    AutoLockedPost::reply((int) $discussion->id, $this->settings->days())->save();
+                } catch (\Throwable $e) {
+                    $this->log->error(
+                        '[linkrobins/auto-lock] locked discussion '.$discussion->id.
+                        ' but could not add the explanation post: '.$e->getMessage()
+                    );
+                }
             }
         }
 

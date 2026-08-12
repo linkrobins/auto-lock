@@ -1,5 +1,6 @@
 import app from 'flarum/forum/app';
-import { extend } from 'flarum/common/extend';
+import { override } from 'flarum/common/extend';
+import AutoLockedPost from './AutoLockedPost';
 
 // The global Flarum exposes, not an import: flarum-webpack-config does not
 // externalize mithril, so importing it would bundle a second copy.
@@ -28,24 +29,35 @@ function countdownText(lockAt) {
 }
 
 app.initializers.add('linkrobins/auto-lock', () => {
+  // What Extend.PostTypes().add() does under the hood. Registered directly so
+  // the stream can render the post type even on an install whose extenders
+  // array is not read.
+  app.postComponents['linkrobinsAutoLocked'] = AutoLockedPost;
+
+  // override, NOT extend. extend() hands the callback the return value and
+  // discards whatever the callback returns, so it can only mutate in place;
+  // returning a new vnode from it is silently ignored and nothing renders.
+  //
   // String path form so this applies whether ReplyPlaceholder sits in an eager
   // or a lazy loaded chunk, and `import type` is avoided entirely since the
   // component is never referenced as a value.
-  extend('flarum/forum/components/ReplyPlaceholder', 'view', function (vnode) {
-    if (!app.forum.attribute('linkrobinsAutoLockEnabled')) return;
-    if (!app.forum.attribute('linkrobinsAutoLockShowCountdown')) return;
+  override('flarum/forum/components/ReplyPlaceholder', 'view', function (original, ...args) {
+    const vnode = original(...args);
+
+    if (!app.forum.attribute('linkrobinsAutoLockEnabled')) return vnode;
+    if (!app.forum.attribute('linkrobinsAutoLockShowCountdown')) return vnode;
 
     const discussion = this.attrs && this.attrs.discussion;
-    if (!discussion) return;
+    if (!discussion) return vnode;
 
     // Serialized server side, and already null when the discussion is exempt,
     // already locked, or the feature is off. So there is no policy left to
     // duplicate here: a date means a countdown, no date means nothing.
     const raw = discussion.attribute('linkrobinsAutoLockAt');
-    if (!raw) return;
+    if (!raw) return vnode;
 
     const lockAt = new Date(raw);
-    if (isNaN(lockAt.getTime())) return;
+    if (isNaN(lockAt.getTime())) return vnode;
 
     const notice = m(
       'div',

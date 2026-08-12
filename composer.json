@@ -26,8 +26,14 @@
         "flarum/core": "^2.0"
     },
     "require-dev": {
-        "flarum/testing": "^2.0",
-        "flarum/phpstan": "^2.0"
+        "flarum/lock": "*",
+        "flarum/phpstan": "^2.0",
+        "flarum/tags": "*",
+        "flarum/testing": "^2.0"
+    },
+    "suggest": {
+        "flarum/lock": "Required for this extension to do anything: it owns the is_locked column that auto-locking writes to.",
+        "flarum/tags": "Needed only if you want to exempt certain tags from auto-locking."
     },
     "minimum-stability": "beta",
     "prefer-stable": true,
@@ -57,7 +63,7 @@
     "extra": {
         "flarum-extension": {
             "title": "Link Robins Auto Lock",
-            "category": "moderation",
+            "category": "feature",
             "icon": {
                 "name": "fas fa-hourglass-end",
                 "color": "#07adcc",

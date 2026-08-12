@@ -11,6 +11,7 @@ namespace LinkRobins\AutoLock\Tests\integration\api;
 
 use Carbon\Carbon;
 use Flarum\Discussion\Discussion;
+use Flarum\Post\Post;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
 use Flarum\Testing\integration\TestCase;
 use LinkRobins\AutoLock\AutoLocker;
@@ -103,6 +104,54 @@ class AutoLockTest extends TestCase
     {
         $this->assertSame(1, $this->locker()->run());
         $this->assertSame(0, $this->locker()->run(), 'an already locked discussion must not be picked up again');
+    }
+
+    #[Test]
+    public function locking_leaves_an_event_post_recording_the_threshold(): void
+    {
+        $this->locker()->run();
+
+        $post = Post::where('discussion_id', 1)->where('type', 'linkrobinsAutoLocked')->first();
+
+        $this->assertNotNull($post, 'a locked discussion should carry the explanation post');
+        $this->assertNull($post->user_id, 'the post has no actor: nobody performed this lock');
+        $this->assertSame(30, $post->content['days'] ?? null, 'the threshold in force at lock time is recorded on the post');
+    }
+
+    #[Test]
+    public function the_event_post_does_not_bump_the_discussion(): void
+    {
+        // Resolve the locker first. It boots the app, and until something does,
+        // Eloquent has no connection resolver and a bare Discussion::find()
+        // dies with "Call to a member function connection() on null". The other
+        // tests get away with reading models because they call run() first.
+        $locker = $this->locker();
+
+        $before = Discussion::find(1);
+        $lastPostedAt = $before->last_posted_at;
+        $commentCount = $before->comment_count;
+
+        $locker->run();
+
+        $after = Discussion::find(1);
+
+        $this->assertEquals($lastPostedAt, $after->last_posted_at, 'an event post must not bump a stale discussion up the list');
+        $this->assertSame($commentCount, $after->comment_count, 'an event post is not a reply and must not be counted as one');
+    }
+
+    #[Test]
+    public function the_note_can_be_switched_off(): void
+    {
+        $this->setting('linkrobins-auto-lock.post_notice', '0');
+
+        $this->locker()->run();
+
+        $this->assertTrue((bool) Discussion::find(1)->getAttribute('is_locked'), 'it should still lock');
+        $this->assertSame(
+            0,
+            Post::where('discussion_id', 1)->where('type', 'linkrobinsAutoLocked')->count(),
+            'no note should be written when the setting is off'
+        );
     }
 
     #[Test]

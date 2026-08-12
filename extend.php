@@ -4,6 +4,7 @@ use Flarum\Api\Resource\DiscussionResource;
 use Flarum\Extend;
 use Illuminate\Console\Scheduling\Event;
 use LinkRobins\AutoLock\AddAutoLockAttributes;
+use LinkRobins\AutoLock\AutoLockedPost;
 use LinkRobins\AutoLock\LockStaleDiscussionsCommand;
 use LinkRobins\AutoLock\Settings;
 
@@ -38,6 +39,7 @@ return [
         ->default(Settings::DAYS, (string) Settings::DEFAULT_DAYS)
         ->default(Settings::EXEMPT_TAGS, '')
         ->default(Settings::SHOW_COUNTDOWN, true)
+        ->default(Settings::POST_NOTICE, true)
         // The forum frontend needs these to decide whether to render the
         // countdown at all. The exempt tag list stays server side: it is
         // already accounted for in the serialized date.
@@ -47,4 +49,8 @@ return [
 
     (new Extend\ApiResource(DiscussionResource::class))
         ->fields(AddAutoLockAttributes::class),
+
+    // The "locked automatically" line in the post stream.
+    (new Extend\Post())
+        ->type(AutoLockedPost::class),
 ];
