@@ -121,11 +121,17 @@ class AutoLockTest extends TestCase
     #[Test]
     public function the_event_post_does_not_bump_the_discussion(): void
     {
+        // Resolve the locker first. It boots the app, and until something does,
+        // Eloquent has no connection resolver and a bare Discussion::find()
+        // dies with "Call to a member function connection() on null". The other
+        // tests get away with reading models because they call run() first.
+        $locker = $this->locker();
+
         $before = Discussion::find(1);
         $lastPostedAt = $before->last_posted_at;
         $commentCount = $before->comment_count;
 
-        $this->locker()->run();
+        $locker->run();
 
         $after = Discussion::find(1);
 
