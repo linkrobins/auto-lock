@@ -62,7 +62,7 @@
     },
     "extra": {
         "flarum-extension": {
-            "title": "Link Robins Auto Lock",
+            "title": "LR Auto Lock",
             "category": "feature",
             "icon": {
                 "name": "fas fa-hourglass-end",
