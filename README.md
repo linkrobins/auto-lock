@@ -7,16 +7,38 @@ still reply to it.
 
 Flarum 2.x only.
 
+## Installation
+
+```sh
+composer require linkrobins/auto-lock
+```
+
+Then toggle it on in the admin panel's **Extensions** page. It ships switched off, so also turn on its master switch in the settings (below) when you are ready.
+
+## Updating
+
+```sh
+composer update linkrobins/auto-lock
+php flarum cache:clear
+```
+
 ## What it does
 
-Once a day is too coarse for a countdown, so the job runs hourly. Every run it
-looks for discussions whose most recent post is older than the number of days
-you set, and locks them. A discussion is skipped when it carries one of your
-exempt tags, when it is already locked, or when it is hidden.
+The job runs hourly, so a discussion locks close to the moment its countdown
+said it would. Every run it looks for discussions whose most recent post is
+older than the number of days you set, and locks them. A discussion is skipped
+when it carries one of your exempt tags, when it is already locked, or when it
+is hidden. A discussion that has no activity date counts from when it was
+started.
 
 While a discussion is still open, members see a line above the reply box:
 
 > This discussion locks in 12 days if nobody replies.
+
+The countdown is read from the same code that does the locking, so the date a
+member sees is the date the job uses. It counts in whole days ("locks in 12
+days", "locks tomorrow", "locks today") and does not appear on discussions that
+are exempt, already locked, or when the feature is off.
 
 Replying resets the clock, because the countdown is measured from the most
 recent post. That is the point of showing it: someone who still cares can keep
@@ -73,6 +95,11 @@ back to the top of the list and does not notify anyone.
 
 `flarum/tags` is optional. Without it there are simply no tags to exempt.
 
+The extension adds no permissions, no database tables and no migrations. A
+discussion locked by this job is an ordinary locked discussion, so the usual
+lock permissions apply: a moderator with permission can unlock it by hand like
+any other.
+
 ## Trying it before you trust it
 
 The command is safe to run by hand, and `--dry-run` reports what it would lock
@@ -80,8 +107,10 @@ without touching anything:
 
     php flarum linkrobins:auto-lock --dry-run
 
-Worth doing once on an established forum, where the first real run can lock a
-lot of threads at once.
+The command prints the cutoff date and how many discussions it would lock. It
+does nothing while the master switch is off, and reports an error if
+`flarum/lock` is not enabled. Worth doing once on an established forum, where
+the first real run can lock a lot of threads at once.
 
 ## Before you turn it on
 
